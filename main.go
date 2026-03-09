@@ -20,11 +20,8 @@ func main() {
 		CommandMap: make(map[string]func(*commands.State, commands.Command) error),
 	}
 	newCommand := commands.Command{}
-	newCommands.Register("register", commands.HandlerRegister)
-	newCommands.Register("login", commands.HandlerLogin)
-	newCommands.Register("reset", commands.HandlerReset)
-	newCommands.Register("users", commands.HandlerListUsers)
-	newCommands.Register("agg", commands.HandlerFetchFeed)
+	addCommands(&newCommands)
+
 	args := os.Args
 	if len(args) < 2 {
 		fmt.Println("Missing argument, exiting.")
@@ -46,4 +43,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func addCommands(newCommands *commands.Commands) {
+	newCommands.Register("register", commands.HandlerRegister)
+	newCommands.Register("login", commands.HandlerLogin)
+	newCommands.Register("reset", commands.HandlerReset)
+	newCommands.Register("users", commands.HandlerListUsers)
+	newCommands.Register("agg", commands.HandlerFetchFeed)
+	newCommands.Register("addfeed", commands.HandlerAddFeed)
+	newCommands.Register("feeds", commands.HandlerListFeeds)
 }

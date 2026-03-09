@@ -54,7 +54,3 @@ func fetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
 
 	return &newRSSFeed, nil
 }
-
-func addFeed(name, url string) {
-
-}
