@@ -53,4 +53,6 @@ func addCommands(newCommands *commands.Commands) {
 	newCommands.Register("agg", commands.HandlerFetchFeed)
 	newCommands.Register("addfeed", commands.HandlerAddFeed)
 	newCommands.Register("feeds", commands.HandlerListFeeds)
+	newCommands.Register("follow", commands.HandlerFollow)
+	newCommands.Register("following", commands.HandlerFollowing)
 }

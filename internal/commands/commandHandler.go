@@ -27,6 +27,53 @@ type Commands struct {
 	CommandMap map[string]func(*State, Command) error
 }
 
+func HandlerFollowing(s *State, cmd Command) error {
+	user, err := s.Db.GetUser(context.Background(), s.Config.CurrentUserName)
+	if err != nil {
+		return fmt.Errorf("Error getting user: %s", err.Error())
+	}
+	feeds, err := s.Db.GetFeedFollowsForUser(context.Background(), user.ID)
+	if err != nil {
+		return fmt.Errorf("Error getting followed feeds: %s", err.Error())
+	}
+	fmt.Println(user.Name)
+	for _, feed := range feeds {
+		followedFeed, err := s.Db.GetFeedByID(context.Background(), feed.FeedID)
+		if err != nil {
+			return fmt.Errorf("Error getting followed feeds: %s", err.Error())
+		}
+		fmt.Println(followedFeed.Name)
+	}
+	return nil
+}
+
+func HandlerFollow(s *State, cmd Command) error {
+	if len(cmd.Args) < 1 {
+		return errors.New("Not enough arguments.")
+	}
+	url := cmd.Args[0]
+	feed, err := s.Db.GetFeedByURL(context.Background(), url)
+	user, err := s.Db.GetUser(context.Background(), s.Config.CurrentUserName)
+
+	if err != nil {
+		return fmt.Errorf("Something went wrong: %s\n", err.Error())
+	}
+
+	params := database.CreateFeedFollowParams{
+		ID:        uuid.New(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		UserID:    user.ID,
+		FeedID:    feed.ID,
+	}
+	_, err = s.Db.CreateFeedFollow(context.Background(), params)
+	if err != nil {
+		return fmt.Errorf("Something went wrong: %s\n", err.Error())
+	}
+	fmt.Printf("Added feed '%s' to user '%s'.", feed.Name, user.Name)
+	return nil
+}
+
 func HandlerListFeeds(s *State, cmd Command) error {
 	feeds, err := s.Db.GetFeeds(context.Background())
 	if err != nil {
@@ -64,7 +111,19 @@ func HandlerAddFeed(s *State, cmd Command) error {
 		Url:       url,
 		UserID:    user.ID,
 	}
-	_, err = s.Db.CreateFeed(context.Background(), params)
+	feed, err := s.Db.CreateFeed(context.Background(), params)
+	if err != nil {
+		return fmt.Errorf("Something went wrong: %s\n", err.Error())
+	}
+
+	params2 := database.CreateFeedFollowParams{
+		ID:        uuid.New(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		UserID:    user.ID,
+		FeedID:    feed.ID,
+	}
+	_, err = s.Db.CreateFeedFollow(context.Background(), params2)
 	if err != nil {
 		return fmt.Errorf("Something went wrong: %s\n", err.Error())
 	}
