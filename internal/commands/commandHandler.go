@@ -27,11 +27,50 @@ type Commands struct {
 	CommandMap map[string]func(*State, Command) error
 }
 
-func HandlerFollowing(s *State, cmd Command) error {
-	user, err := s.Db.GetUser(context.Background(), s.Config.CurrentUserName)
-	if err != nil {
-		return fmt.Errorf("Error getting user: %s", err.Error())
+func MiddlewareLoggedIn(handler func(s *State, cmd Command, user database.User) error) func(*State, Command) error {
+	return func(s *State, cmd Command) error {
+		user, err := s.Db.GetUser(context.Background(), s.Config.CurrentUserName)
+		if err != nil {
+			return fmt.Errorf("Problem getting user: %w\n", err)
+		}
+
+		return handler(s, cmd, user)
 	}
+}
+
+func HandlerScrape(s *State, cmd Command) error {
+	timeBetweenRequests, err := time.ParseDuration(cmd.Args[0])
+	fmt.Printf("Collecting feeds every %s\n", cmd.Args[0])
+	if err != nil {
+		return fmt.Errorf("Problem reading time: %w", err)
+	}
+	ticker := time.NewTicker(timeBetweenRequests)
+	for ; ; <-ticker.C {
+		err = scrapeFeeds(s)
+		if err != nil {
+			return fmt.Errorf("Problem scraping feeds: %w", err)
+		}
+	}
+}
+
+func HandlerUnfollow(s *State, cmd Command, user database.User) error {
+	if len(cmd.Args) < 1 {
+		return errors.New("Not enough arguments.")
+	}
+	url := cmd.Args[0]
+	feed, err := s.Db.GetFeedByURL(context.Background(), url)
+	if err != nil {
+		return fmt.Errorf("Problem getting feed: %w\n", err)
+	}
+
+	err = s.Db.UnfollowFeed(context.Background(), database.UnfollowFeedParams{UserID: user.ID, FeedID: feed.ID})
+	if err != nil {
+		return fmt.Errorf("Problem unfollowing feed: %w\n", err)
+	}
+	return nil
+}
+
+func HandlerFollowing(s *State, cmd Command, user database.User) error {
 	feeds, err := s.Db.GetFeedFollowsForUser(context.Background(), user.ID)
 	if err != nil {
 		return fmt.Errorf("Error getting followed feeds: %s", err.Error())
@@ -47,13 +86,12 @@ func HandlerFollowing(s *State, cmd Command) error {
 	return nil
 }
 
-func HandlerFollow(s *State, cmd Command) error {
+func HandlerFollow(s *State, cmd Command, user database.User) error {
 	if len(cmd.Args) < 1 {
 		return errors.New("Not enough arguments.")
 	}
 	url := cmd.Args[0]
 	feed, err := s.Db.GetFeedByURL(context.Background(), url)
-	user, err := s.Db.GetUser(context.Background(), s.Config.CurrentUserName)
 
 	if err != nil {
 		return fmt.Errorf("Something went wrong: %s\n", err.Error())
@@ -91,17 +129,12 @@ func HandlerListFeeds(s *State, cmd Command) error {
 	return nil
 }
 
-func HandlerAddFeed(s *State, cmd Command) error {
+func HandlerAddFeed(s *State, cmd Command, user database.User) error {
 	if len(cmd.Args) < 2 {
 		return errors.New("Not enough arguments.")
 	}
 	name := cmd.Args[0]
 	url := cmd.Args[1]
-	user, err := s.Db.GetUser(context.Background(), s.Config.CurrentUserName)
-
-	if err != nil {
-		return fmt.Errorf("Something went wrong: %s\n", err.Error())
-	}
 
 	params := database.CreateFeedParams{
 		ID:        uuid.New(),
@@ -131,12 +164,19 @@ func HandlerAddFeed(s *State, cmd Command) error {
 }
 
 func HandlerFetchFeed(s *State, cmd Command) error {
-	//feedURL := cmd.Args[0]
-	newFeed, err := fetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
-	fmt.Println(newFeed.Channel.Item)
-	if err != nil {
-		return fmt.Errorf("Error: %s", err.Error())
+	if len(cmd.Args) < 1 {
+		return errors.New("Error: Not enough arguments.")
 	}
+	err := HandlerScrape(s, cmd)
+	if err != nil {
+		return errors.New(err.Error())
+	}
+	/*
+		newFeed, err := fetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
+		fmt.Println(newFeed.Channel.Item)
+		if err != nil {
+			return fmt.Errorf("Error: %s", err.Error())
+		}*/
 	return nil
 }
 

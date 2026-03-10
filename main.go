@@ -51,8 +51,9 @@ func addCommands(newCommands *commands.Commands) {
 	newCommands.Register("reset", commands.HandlerReset)
 	newCommands.Register("users", commands.HandlerListUsers)
 	newCommands.Register("agg", commands.HandlerFetchFeed)
-	newCommands.Register("addfeed", commands.HandlerAddFeed)
+	newCommands.Register("addfeed", commands.MiddlewareLoggedIn(commands.HandlerAddFeed))
 	newCommands.Register("feeds", commands.HandlerListFeeds)
-	newCommands.Register("follow", commands.HandlerFollow)
-	newCommands.Register("following", commands.HandlerFollowing)
+	newCommands.Register("follow", commands.MiddlewareLoggedIn(commands.HandlerFollow))
+	newCommands.Register("following", commands.MiddlewareLoggedIn(commands.HandlerFollowing))
+	newCommands.Register("unfollow", commands.MiddlewareLoggedIn(commands.HandlerUnfollow))
 }

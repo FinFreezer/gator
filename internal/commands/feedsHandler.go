@@ -2,11 +2,15 @@ package internal
 
 import (
 	"context"
+	"database/sql"
 	"encoding/xml"
 	"fmt"
 	"html"
 	"io"
 	"net/http"
+	"time"
+
+	"github.com/finfreezer/blogAggregator/internal/database"
 )
 
 type RSSFeed struct {
@@ -53,4 +57,27 @@ func fetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
 	//fmt.Println(newRSSFeed)
 
 	return &newRSSFeed, nil
+}
+
+func scrapeFeeds(s *State) error {
+	nextFeed, err := s.Db.GetNextFeedToFetch(context.Background())
+	if err != nil {
+		return fmt.Errorf("Error fetching feed: %w", err)
+	}
+	s.Db.MarkFeedFetched(context.Background(), database.MarkFeedFetchedParams{
+		LastFetchedAt: sql.NullTime{Time: time.Now(), Valid: true},
+		UpdatedAt:     time.Now(),
+		ID:            nextFeed.ID},
+	)
+	feed, err := fetchFeed(context.Background(), nextFeed.Url)
+	if err != nil {
+		return fmt.Errorf("Error fetching feed: %w", err)
+	}
+
+	fmt.Printf("Reading feed from %s\n", nextFeed.Url)
+	for _, item := range feed.Channel.Item {
+		fmt.Println(item.Title)
+	}
+	fmt.Printf("\n\n")
+	return nil
 }
