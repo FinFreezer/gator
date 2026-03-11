@@ -89,7 +89,11 @@ func scrapeFeeds(s *State) error {
 		if err != nil {
 			fmt.Println(fmt.Errorf("Something went wrong parsing timestamp: %w", err))
 		}
-		fID, err := s.Db.GetFeedByURL(context.Background(), item.Link)
+		fID, err := s.Db.GetFeedByID(context.Background(), nextFeed.ID)
+		if err != nil {
+			fmt.Println(fmt.Errorf("Something went wrong finding feed: %w", err))
+			fmt.Println(nextFeed.ID)
+		}
 		params := database.CreatePostParams{
 			ID:          uuid.New(),
 			CreatedAt:   time.Now(),
