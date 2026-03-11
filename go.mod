@@ -1,4 +1,4 @@
-module github.com/finfreezer/blogAggregator
+module github.com/finfreezer/blog-aggregator
 
 go 1.25.1
 
